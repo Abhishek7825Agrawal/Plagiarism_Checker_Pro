@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plagiarism Checker Pro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+
+    <!-- Custom Cursor -->
+    <div class="cursor"></div>
+    <div class="cursor-follower"></div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-search-check"></i>
+                <h1>Plagiarism<span>Check</span>Pro</h1>
+            </div>
+            <nav class="nav">
+                <a href="#" class="nav-link active"><i class="fas fa-home"></i> Home</a>
+                <a href="#features" class="nav-link"><i class="fas fa-star"></i> Features</a>
+                <a href="#about" class="nav-link"><i class="fas fa-info-circle"></i> About</a>
+                <button class="theme-toggle" id="themeToggle">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </nav>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-content">
+                <h2>Detect Plagiarism with <span class="highlight">Military-Grade</span> Accuracy</h2>
+                <p class="subtitle">Advanced algorithms + Web search + Multiple document comparison</p>
+                
+                <div class="stats">
+                    <div class="stat">
+                        <i class="fas fa-bolt"></i>
+                        <h3>99.9%</h3>
+                        <p>Accuracy</p>
+                    </div>
+                    <div class="stat">
+                        <i class="fas fa-database"></i>
+                        <h3>10K+</h3>
+                        <p>Sources</p>
+                    </div>
+                    <div class="stat">
+                        <i class="fas fa-clock"></i>
+                        <h3>0.5s</h3>
+                        <p>Check Time</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Checker -->
+        <main class="main-content">
+            <div class="checker-container">
+                <!-- Text Input Section -->
+                <div class="input-section">
+                    <div class="section-header">
+                        <i class="fas fa-edit"></i>
+                        <h3>Enter Your Text</h3>
+                        <div class="word-count" id="wordCount">0 words</div>
+                    </div>
+                    
+                    <div class="textarea-container">
+                        <textarea 
+                            id="inputText" 
+                            placeholder="Paste or type your text here... (Minimum 50 characters)"
+                            rows="12"
+                        ></textarea>
+                        <div class="textarea-actions">
+                            <button class="btn-icon" id="clearText" title="Clear text">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            <button class="btn-icon" id="sampleText" title="Load sample">
+                                <i class="fas fa-magic"></i>
+                            </button>
+                            <button class="btn-icon" id="uploadFile" title="Upload file">
+                                <i class="fas fa-upload"></i>
+                                <input type="file" id="fileInput" accept=".txt,.doc,.docx,.pdf" hidden>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="options">
+                        <div class="option-group">
+                            <label class="checkbox">
+                                <input type="checkbox" id="checkWeb" checked>
+                                <span class="checkmark"></span>
+                                <span>Search web for matches</span>
+                            </label>
+                            <label class="checkbox">
+                                <input type="checkbox" id="deepAnalysis">
+                                <span class="checkmark"></span>
+                                <span>Deep analysis (slower)</span>
+                            </label>
+                        </div>
+                        
+                        <div class="language-select">
+                            <i class="fas fa-language"></i>
+                            <select id="language">
+                                <option value="en">English</option>
+                                <option value="hi">Hindi</option>
+                                <option value="es">Spanish</option>
+                                <option value="fr">French</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary" id="checkBtn">
+                        <i class="fas fa-search"></i>
+                        Check for Plagiarism
+                        <span class="loading-spinner" id="loadingSpinner"></span>
+                    </button>
+                </div>
+
+                <!-- Results Section -->
+                <div class="results-section">
+                    <div class="section-header">
+                        <i class="fas fa-chart-bar"></i>
+                        <h3>Results</h3>
+                        <div class="result-status" id="resultStatus">Ready</div>
+                    </div>
+
+                    <!-- Score Card -->
+                    <div class="score-card" id="scoreCard">
+                        <div class="score-circle">
+                            <svg width="120" height="120" viewBox="0 0 120 120">
+                                <circle class="score-bg" cx="60" cy="60" r="54"></circle>
+                                <circle class="score-progress" cx="60" cy="60" r="54" 
+                                        stroke-dasharray="339.292" stroke-dashoffset="339.292"></circle>
+                            </svg>
+                            <div class="score-value">
+                                <span id="plagiarismScore">0</span>%
+                            </div>
+                        </div>
+                        <div class="score-info">
+                            <h4>Plagiarism Score</h4>
+                            <p class="score-category" id="scoreCategory">Original</p>
+                            <div class="score-breakdown">
+                                <div class="breakdown-item">
+                                    <span>Web Matches</span>
+                                    <span id="webMatches">0%</span>
+                                </div>
+                                <div class="breakdown-item">
+                                    <span>Internal</span>
+                                    <span id="internalMatches">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Results -->
+                    <div class="detailed-results">
+                        <div class="results-tabs">
+                            <button class="tab-btn active" data-tab="sentences">
+                                <i class="fas fa-align-left"></i> Sentences
+                            </button>
+                            <button class="tab-btn" data-tab="sources">
+                                <i class="fas fa-link"></i> Sources
+                            </button>
+                            <button class="tab-btn" data-tab="suggestions">
+                                <i class="fas fa-lightbulb"></i> Suggestions
+                            </button>
+                        </div>
+
+                        <div class="tab-content active" id="sentencesTab">
+                            <div class="sentences-list" id="sentencesList">
+                                <!-- Sentences will be dynamically added here -->
+                                <div class="empty-state">
+                                    <i class="fas fa-file-alt"></i>
+                                    <p>No analysis performed yet</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-content" id="sourcesTab">
+                            <div class="sources-list" id="sourcesList">
+                                <div class="empty-state">
+                                    <i class="fas fa-search"></i>
+                                    <p>No sources found yet</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-content" id="suggestionsTab">
+                            <div class="suggestions-list" id="suggestionsList">
+                                <div class="empty-state">
+                                    <i class="fas fa-lightbulb"></i>
+                                    <p>Waiting for analysis...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="action-buttons">
+                        <!-- Add this button near your results section -->
+                        <button id="exportBtn" class="btn-primary">
+                             <i class="fas fa-download"></i> Export Report
+                        </button>
+
+                        <button id="shareBtn" class="btn-secondary">
+                            <i class="fas fa-share"></i> Share Results
+                        </button>
+                        <button class="btn-danger" id="clearResultsBtn">
+                            <i class="fas fa-trash"></i> Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Features Section -->
+        <section class="features" id="features">
+            <h2>Powerful Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    <h3>Web Search</h3>
+                    <p>Scans billions of web pages for duplicate content</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3>AI Detection</h3>
+                    <p>Uses advanced AI to detect paraphrased content</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <h3>Multi-Format</h3>
+                    <p>Supports TXT, DOC, PDF, and direct URLs</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Secure</h3>
+                    <p>Your data never leaves your browser</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>PlagiarismCheck Pro</h4>
+                    <p>Advanced plagiarism detection for students, writers, and professionals.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <a href="#">Home</a>
+                    <a href="#features">Features</a>
+                    <a href="#about">About</a>
+                    <a href="#">Privacy Policy</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Connect</h4>
+                    <div class="social-icons">
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="https://github.com/Abhishek7825Agrawal"><i class="fab fa-github"></i></a>
+                        <a href="https://www.linkedin.com/in/abhishek-agrawal-ba8ab2374/"><i class="fab fa-linkedin"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>Developed by Abhishek Agrawal</p>
+                <p>&copy; 2024 PlagiarismCheck Pro. All rights reserved.</p>
+                <p class="disclaimer">Note: This is an educational tool. For professional use, consider commercial solutions.</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
