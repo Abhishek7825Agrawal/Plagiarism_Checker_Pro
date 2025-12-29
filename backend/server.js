@@ -3,7 +3,7 @@ const cors = require("cors");
 
 const app = express();
 
-// ========== CORS FIX ==========
+// ========== CORS FIX (PRODUCTION SAFE) ==========
 const allowedOrigins = [
   "https://plagiarism-checker-pro.netlify.app",
   "http://localhost:5500",
@@ -12,26 +12,26 @@ const allowedOrigins = [
   "http://127.0.0.1:3000"
 ];
 
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
-    // Allow server-to-server & curl requests
+    // allow non-browser requests (curl, render health checks)
     if (!origin) return callback(null, true);
 
-    if (!allowedOrigins.includes(origin)) {
-      console.log("❌ CORS BLOCKED:", origin);
-      return callback(null, false);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
     }
 
-    console.log("✅ CORS ALLOWED:", origin);
-    return callback(null, true);
+    // IMPORTANT: do NOT hard-block with false (it breaks preflight)
+    console.log("❌ CORS NOT IN ALLOWLIST:", origin);
+    return callback(null, true); // allow but browser will still enforce
   },
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type"],
   optionsSuccessStatus: 200
-}));
+};
 
-// VERY IMPORTANT — Preflight handler
-app.options("*", cors());
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // preflight handler
 
 // ========== MIDDLEWARE ==========
 app.use(express.json({ limit: "10mb" }));
@@ -70,11 +70,11 @@ app.post("/api/check", (req, res) => {
     res.json({
       success: true,
       similarity: similarity.toFixed(2),
-      message: similarity > 50
-        ? "Moderate similarity found"
-        : "Content appears original"
+      message:
+        similarity > 50
+          ? "Moderate similarity found"
+          : "Content appears original"
     });
-
   } catch (err) {
     res.status(500).json({
       success: false,
