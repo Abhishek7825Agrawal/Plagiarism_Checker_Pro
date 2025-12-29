@@ -2,49 +2,83 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 
-// Enable CORS for all routes
+// ========== CORS FIX ==========
+const allowedOrigins = [
+  'https://plagiarism-check-pro.netlify.app',
+  'https://plagiarism-check-pro.netlify.app/',
+  'http://localhost:5500',
+  'http://127.0.0.1:5500',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
+];
+
 app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
+      console.log('CORS Blocked:', origin);
+      return callback(new Error(msg), false);
+    }
+    console.log('CORS Allowed:', origin);
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Length', 'X-Request-ID'],
+  optionsSuccessStatus: 200
 }));
 
+// Handle pre-flight requests
+app.options('*', cors());
+
+// ========== MIDDLEWARE ==========
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ========== ROUTES ==========
-// 1. Root route
+// Root route
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: '🎉 Plagiarism Checker API is LIVE!',
-    version: '1.0.0',
+    message: '🎉 Plagiarism Checker API v1.0',
     status: 'active',
     timestamp: new Date().toISOString(),
+    frontend: 'https://plagiarism-check-pro.netlify.app',
     endpoints: {
       health: 'GET /api/health',
-      check_plagiarism: 'POST /api/check',
+      check: 'POST /api/check',
       export_pdf: 'POST /api/export/pdf',
       test: 'GET /api/test/pdf'
     },
-    usage: 'Send POST request to /api/check with {text: "your text here"}',
-    note: 'Frontend: https://your-netlify-site.netlify.app'
+    cors: {
+      allowed_origins: allowedOrigins,
+      status: 'enabled'
+    }
   });
 });
 
-// 2. Health check
+// Health check
 app.get('/api/health', (req, res) => {
+  console.log('Health check from origin:', req.headers.origin);
   res.json({
     success: true,
     status: 'healthy',
     service: 'plagiarism-checker-api',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    frontend_url: 'https://plagiarism-check-pro.netlify.app',
+    message: 'API is connected and working'
   });
 });
 
-// 3. Check plagiarism
+// Check plagiarism
 app.post('/api/check', (req, res) => {
+  console.log('Check request from:', req.headers.origin);
+  
   try {
     const { text } = req.body;
     
@@ -70,7 +104,7 @@ app.post('/api/check', (req, res) => {
         detailedReport: {
           sentenceAnalysis: [
             {
-              sentence: text.substring(0, 100) + '...',
+              sentence: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
               position: 0,
               similarity: parseFloat(similarity.toFixed(2)),
               isFlagged: similarity > 50
@@ -80,15 +114,16 @@ app.post('/api/check', (req, res) => {
           sources: []
         },
         suggestions: [
-          similarity > 80 ? "High plagiarism detected" :
-          similarity > 50 ? "Moderate similarity found" :
-          "Content appears original"
+          similarity > 80 ? "⚠️ High plagiarism detected" :
+          similarity > 50 ? "⚠️ Moderate similarity found" :
+          "✅ Content appears original"
         ]
       },
       timestamp: new Date().toISOString()
     });
     
   } catch (error) {
+    console.error('Check error:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error',
@@ -97,7 +132,7 @@ app.post('/api/check', (req, res) => {
   }
 });
 
-// 4. Export PDF
+// Export PDF
 app.post('/api/export/pdf', (req, res) => {
   res.json({
     success: true,
@@ -106,7 +141,7 @@ app.post('/api/export/pdf', (req, res) => {
   });
 });
 
-// 5. Test endpoint
+// Test endpoint
 app.get('/api/test/pdf', (req, res) => {
   res.json({
     success: true,
@@ -115,11 +150,12 @@ app.get('/api/test/pdf', (req, res) => {
   });
 });
 
-// 6. 404 handler
-app.use((req, res) => {
+// 404 handler
+app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
     error: 'Endpoint not found',
+    path: req.originalUrl,
     availableEndpoints: [
       'GET  /',
       'GET  /api/health',
@@ -137,13 +173,16 @@ const HOST = '0.0.0.0';
 app.listen(PORT, HOST, () => {
   console.log(`
   ╔══════════════════════════════════════════╗
-  ║   🚀 PLAGIARISM CHECKER API STARTED     ║
+  ║   🚀 PLAGIARISM CHECKER API v1.0        ║
   ╚══════════════════════════════════════════╝
   
   📍 Port: ${PORT}
   🌐 Host: ${HOST}
   🔗 Local: http://localhost:${PORT}
-  🌍 Render: https://your-service.onrender.com
+  🌍 Render: https://plagiarism-checker-backend.onrender.com
+  
+  🎯 FRONTEND:
+  🔗 https://plagiarism-check-pro.netlify.app
   
   📊 ENDPOINTS:
   ✅ GET  /              - API Info
@@ -152,7 +191,13 @@ app.listen(PORT, HOST, () => {
   ✅ POST /api/export/pdf - Export PDF
   ✅ GET  /api/test/pdf  - Test
   
+  🔧 CORS Enabled for:
+  • https://plagiarism-check-pro.netlify.app
+  • Localhost origins
+  
   🚦 Status: READY
   ⏰ Started: ${new Date().toISOString()}
   `);
 });
+
+module.exports = app;
