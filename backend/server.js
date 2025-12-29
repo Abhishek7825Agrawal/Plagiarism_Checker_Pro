@@ -5,20 +5,7 @@ const app = express();
 const PORT = process.env.PORT || 10000;  
 const HOST = '0.0.0.0';  
 
-app.listen(PORT, HOST, () => {  
-  console.log(`========================================`);
-  console.log(`🚀 PLAGIARISM CHECKER SERVER STARTED`);
-  console.log(`========================================`);
-  console.log(`PORT: ${PORT}`);
-  console.log(`HOST: ${HOST}`);
-  console.log(`URL: http://${HOST}:${PORT}`);
-  console.log(`📋 ENDPOINTS:`);
-  console.log(`1. GET  http://${HOST}:${PORT}/api/health`);
-  console.log(`2. POST http://${HOST}:${PORT}/api/check`);
-  console.log(`3. POST http://${HOST}:${PORT}/api/export/pdf`);
-  console.log(`4. GET  http://${HOST}:${PORT}/api/test/pdf`);
-  console.log(`========================================`);
-});
+
 
 // Middleware
 app.use(cors());
@@ -161,23 +148,17 @@ app.get('/api/test/pdf', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-    console.log(`
-========================================
-🚀 PLAGIARISM CHECKER SERVER STARTED
-========================================
-PORT: ${PORT}
-URL: http://localhost:${PORT}
-
-📋 ENDPOINTS:
-1. GET  http://localhost:${PORT}/api/health
-2. POST http://localhost:${PORT}/api/check
-3. POST http://localhost:${PORT}/api/export/pdf
-4. GET  http://localhost:${PORT}/api/test/pdf
-
-💡 Test immediately:
-• Open browser: http://localhost:${PORT}/api/health
-• Open browser: http://localhost:${PORT}/api/test/pdf
-========================================
-    `);
+app.listen(PORT, HOST, () => {  
+  console.log(`========================================`);
+  console.log(`🚀 PLAGIARISM CHECKER SERVER STARTED`);
+  console.log(`========================================`);
+  console.log(`PORT: ${PORT}`);
+  console.log(`HOST: ${HOST}`);
+  console.log(`URL: http://${HOST}:${PORT}`);
+  console.log(`📋 ENDPOINTS:`);
+  console.log(`1. GET  http://${HOST}:${PORT}/api/health`);
+  console.log(`2. POST http://${HOST}:${PORT}/api/check`);
+  console.log(`3. POST http://${HOST}:${PORT}/api/export/pdf`);
+  console.log(`4. GET  http://${HOST}:${PORT}/api/test/pdf`);
+  console.log(`========================================`);
 });
