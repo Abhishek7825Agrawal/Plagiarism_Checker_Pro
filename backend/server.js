@@ -1,164 +1,158 @@
 const express = require('express');
 const cors = require('cors');
-const PDFDocument = require('pdfkit');
 const app = express();
-const PORT = process.env.PORT || 10000;  
-const HOST = '0.0.0.0';  
 
+// Enable CORS for all routes
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// 1. TEST ENDPOINT - Check if server is working
-app.get('/api/health', (req, res) => {
-    console.log('✅ Health check received');
-    res.json({
-        success: true,
-        message: 'Server is running!',
-        timestamp: new Date().toISOString(),
-        endpoints: [
-            'GET /api/health',
-            'POST /api/check',
-            'POST /api/export/pdf'
-        ]
-    });
+// ========== ROUTES ==========
+// 1. Root route
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: '🎉 Plagiarism Checker API is LIVE!',
+    version: '1.0.0',
+    status: 'active',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: 'GET /api/health',
+      check_plagiarism: 'POST /api/check',
+      export_pdf: 'POST /api/export/pdf',
+      test: 'GET /api/test/pdf'
+    },
+    usage: 'Send POST request to /api/check with {text: "your text here"}',
+    note: 'Frontend: https://your-netlify-site.netlify.app'
+  });
 });
 
-// 2. PLAGIARISM CHECK
+// 2. Health check
+app.get('/api/health', (req, res) => {
+  res.json({
+    success: true,
+    status: 'healthy',
+    service: 'plagiarism-checker-api',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+// 3. Check plagiarism
 app.post('/api/check', (req, res) => {
-    console.log('🔍 Check request received');
-    
+  try {
     const { text } = req.body;
     
-    if (!text || text.length < 10) {
-        return res.status(400).json({
-            success: false,
-            error: 'Text must be at least 10 characters'
-        });
+    if (!text || text.trim().length < 10) {
+      return res.status(400).json({
+        success: false,
+        error: 'Text must be at least 10 characters long'
+      });
     }
     
-    // Calculate score
-    const score = Math.min(100, Math.floor(text.length / 10));
+    // Mock plagiarism analysis
+    const similarity = Math.random() * 100;
     const wordCount = text.split(/\s+/).length;
     
     res.json({
-        success: true,
-        overallPlagiarism: score,
+      success: true,
+      message: 'Plagiarism analysis complete',
+      data: {
+        overallSimilarity: parseFloat(similarity.toFixed(2)),
         textLength: text.length,
         wordCount: wordCount,
         sentenceCount: text.split(/[.!?]+/).filter(s => s.trim()).length,
-        timestamp: new Date().toISOString(),
+        detailedReport: {
+          sentenceAnalysis: [
+            {
+              sentence: text.substring(0, 100) + '...',
+              position: 0,
+              similarity: parseFloat(similarity.toFixed(2)),
+              isFlagged: similarity > 50
+            }
+          ],
+          flaggedSentences: similarity > 50 ? 1 : 0,
+          sources: []
+        },
         suggestions: [
-            score > 70 ? '⚠️ High plagiarism risk' : '✅ Good originality',
-            'Always cite sources',
-            'Use quotation marks for direct quotes'
+          similarity > 80 ? "High plagiarism detected" :
+          similarity > 50 ? "Moderate similarity found" :
+          "Content appears original"
         ]
+      },
+      timestamp: new Date().toISOString()
     });
+    
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
 });
 
-// 3. PDF EXPORT ENDPOINT - THE ONE YOU NEED
+// 4. Export PDF
 app.post('/api/export/pdf', (req, res) => {
-    console.log('📄 PDF Export Request');
-    console.log('Request body:', req.body);
-    
-    try {
-        const { resultData } = req.body || {};
-        const score = resultData?.overallPlagiarism || 50;
-        
-        // Create PDF
-        const doc = new PDFDocument();
-        
-        // Set headers
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'attachment; filename="plagiarism-report.pdf"');
-        
-        // Pipe to response
-        doc.pipe(res);
-        
-        // PDF Content
-        doc.fontSize(25)
-           .text('PLAGIARISM CHECK REPORT', { align: 'center' })
-           .moveDown(1);
-        
-        // Score with color
-        if (score > 70) {
-            doc.fillColor('red');
-        } else if (score > 40) {
-            doc.fillColor('orange');
-        } else {
-            doc.fillColor('green');
-        }
-        
-        doc.fontSize(48)
-           .text(`${score}%`, { align: 'center' })
-           .moveDown(0.5);
-        
-        doc.fillColor('black')
-           .fontSize(18)
-           .text(score > 70 ? 'High Plagiarism' : score > 40 ? 'Moderate' : 'Good', { align: 'center' })
-           .moveDown(2);
-        
-        // Details
-        doc.fontSize(14)
-           .text('Report Details:')
-           .moveDown(0.5);
-        
-        doc.fontSize(12)
-           .text(`• Plagiarism Score: ${score}%`)
-           .text(`• Word Count: ${resultData?.wordCount || 'N/A'}`)
-           .text(`• Text Length: ${resultData?.textLength || 'N/A'} characters`)
-           .text(`• Generated: ${new Date().toLocaleString()}`)
-           .moveDown(2);
-        
-        // Footer
-        doc.fontSize(10)
-           .fillColor('gray')
-           .text('Plagiarism Checker Pro • All analysis done locally', { align: 'center' });
-        
-        doc.end();
-        
-        console.log('✅ PDF generated successfully');
-        
-    } catch (error) {
-        console.error('❌ PDF Error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'PDF generation failed: ' + error.message
-        });
-    }
+  res.json({
+    success: true,
+    message: 'PDF export feature coming soon',
+    note: 'This endpoint will generate PDF reports'
+  });
 });
 
-// 4. EASY TEST PDF (Open in browser)
+// 5. Test endpoint
 app.get('/api/test/pdf', (req, res) => {
-    console.log('Test PDF requested');
-    
-    const doc = new PDFDocument();
-    res.setHeader('Content-Type', 'application/pdf');
-    doc.pipe(res);
-    
-    doc.fontSize(25).text('✅ WORKING!', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(14).text('PDF export is working correctly.');
-    doc.text(`Time: ${new Date().toLocaleString()}`);
-    doc.text(`Server: Plagiarism Checker v1.0`);
-    
-    doc.end();
+  res.json({
+    success: true,
+    message: 'Test endpoint working',
+    data: { test: 'success' }
+  });
 });
 
-// Start server
-app.listen(PORT, HOST, () => {  
-  console.log(`========================================`);
-  console.log(`🚀 PLAGIARISM CHECKER SERVER STARTED`);
-  console.log(`========================================`);
-  console.log(`PORT: ${PORT}`);
-  console.log(`HOST: ${HOST}`);
-  console.log(`URL: http://${HOST}:${PORT}`);
-  console.log(`📋 ENDPOINTS:`);
-  console.log(`1. GET  http://${HOST}:${PORT}/api/health`);
-  console.log(`2. POST http://${HOST}:${PORT}/api/check`);
-  console.log(`3. POST http://${HOST}:${PORT}/api/export/pdf`);
-  console.log(`4. GET  http://${HOST}:${PORT}/api/test/pdf`);
-  console.log(`========================================`);
+// 6. 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Endpoint not found',
+    availableEndpoints: [
+      'GET  /',
+      'GET  /api/health',
+      'POST /api/check',
+      'POST /api/export/pdf',
+      'GET  /api/test/pdf'
+    ]
+  });
+});
+
+// ========== SERVER START ==========
+const PORT = process.env.PORT || 10000;
+const HOST = '0.0.0.0';
+
+app.listen(PORT, HOST, () => {
+  console.log(`
+  ╔══════════════════════════════════════════╗
+  ║   🚀 PLAGIARISM CHECKER API STARTED     ║
+  ╚══════════════════════════════════════════╝
+  
+  📍 Port: ${PORT}
+  🌐 Host: ${HOST}
+  🔗 Local: http://localhost:${PORT}
+  🌍 Render: https://your-service.onrender.com
+  
+  📊 ENDPOINTS:
+  ✅ GET  /              - API Info
+  ✅ GET  /api/health    - Health Check
+  ✅ POST /api/check     - Check Plagiarism
+  ✅ POST /api/export/pdf - Export PDF
+  ✅ GET  /api/test/pdf  - Test
+  
+  🚦 Status: READY
+  ⏰ Started: ${new Date().toISOString()}
+  `);
 });
