@@ -2,7 +2,23 @@ const express = require('express');
 const cors = require('cors');
 const PDFDocument = require('pdfkit');
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 10000;  
+const HOST = '0.0.0.0';  
+
+app.listen(PORT, HOST, () => {  
+  console.log(`========================================`);
+  console.log(`🚀 PLAGIARISM CHECKER SERVER STARTED`);
+  console.log(`========================================`);
+  console.log(`PORT: ${PORT}`);
+  console.log(`HOST: ${HOST}`);
+  console.log(`URL: http://${HOST}:${PORT}`);
+  console.log(`📋 ENDPOINTS:`);
+  console.log(`1. GET  http://${HOST}:${PORT}/api/health`);
+  console.log(`2. POST http://${HOST}:${PORT}/api/check`);
+  console.log(`3. POST http://${HOST}:${PORT}/api/export/pdf`);
+  console.log(`4. GET  http://${HOST}:${PORT}/api/test/pdf`);
+  console.log(`========================================`);
+});
 
 // Middleware
 app.use(cors());
