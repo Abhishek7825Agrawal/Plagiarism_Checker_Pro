@@ -29,14 +29,14 @@ const elements = {
     toastContainer: document.getElementById('toastContainer')
 };
 
-// API Configuration
+// API Configuration - ✅ UPDATED
 const API_CONFIG = {
     BASE_URL: 'https://plagiarism-checker-backend.onrender.com',
     ENDPOINTS: {
-        CHECK: '/check',
-        EXPORT_PDF: '/export/pdf',
-        HEALTH: '/health',
-        STATS: '/stats'
+        CHECK: '/api/check',
+        EXPORT_PDF: '/api/export/pdf',
+        HEALTH: '/api/health',
+        STATS: '/api/stats'
     }
 };
 
@@ -238,12 +238,14 @@ async function checkAPIHealth() {
                 elements.resultStatus.textContent = 'API Connected';
                 elements.resultStatus.style.color = 'var(--success)';
             }
+            console.log('✅ Backend API is connected');
         }
     } catch (error) {
         if (elements.resultStatus) {
             elements.resultStatus.textContent = 'API Offline';
             elements.resultStatus.style.color = 'var(--danger)';
         }
+        console.error('❌ Backend API is offline:', error);
         showToast('Backend API is offline. Some features may not work.', 'warning');
     }
 }
@@ -274,6 +276,8 @@ async function checkPlagiarism() {
             checkWeb: elements.checkWeb?.checked || false
         };
         
+        console.log('📡 Sending request to:', `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHECK}`);
+        
         const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHECK}`, {
             method: 'POST',
             headers: {
@@ -282,11 +286,14 @@ async function checkPlagiarism() {
             body: JSON.stringify(payload)
         });
         
+        console.log('📥 Response status:', response.status);
+        
         if (!response.ok) {
             throw new Error(`API Error: ${response.status}`);
         }
         
         const data = await response.json();
+        console.log('✅ API response:', data);
         
         if (data.success) {
             currentResult = data;
@@ -297,7 +304,7 @@ async function checkPlagiarism() {
         }
         
     } catch (error) {
-        console.error('Plagiarism check error:', error);
+        console.error('❌ Plagiarism check error:', error);
         showToast(`Error: ${error.message}`, 'error');
         
         // Fallback to client-side check
@@ -334,6 +341,7 @@ function performClientSideCheck(text) {
     const overallScore = sentences.length > 0 ? (plagiarizedSentences / sentences.length) * 100 : 0;
     
     const mockResult = {
+        success: true,
         overallPlagiarism: overallScore,
         textLength: text.length,
         wordCount: text.split(/\s+/).length,
@@ -604,12 +612,12 @@ function clearResults() {
     }
 }
 
-// PDF Export Function - UPDATED VERSION
+// PDF Export Function - ✅ UPDATED
 async function exportAsPDF(resultData) {
     try {
-        showToast('PDF बना रहे हैं...', 'info');
+        showToast('Generating PDF...', 'info');
         
-        const response = await fetch('http://localhost:3000/api/export/pdf', {
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.EXPORT_PDF}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -625,13 +633,13 @@ async function exportAsPDF(resultData) {
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.error || 'PDF नहीं बना पाए');
+            throw new Error(error.error || 'Failed to generate PDF');
         }
 
-        // PDF blob बनाएं
+        // Create PDF blob
         const blob = await response.blob();
         
-        // Download link बनाएं
+        // Create download link
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -641,7 +649,7 @@ async function exportAsPDF(resultData) {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
         
-        showToast('✅ PDF डाउनलोड हो गया!', 'success');
+        showToast('✅ PDF downloaded successfully!', 'success');
         
     } catch (error) {
         console.error('PDF export error:', error);
