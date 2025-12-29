@@ -31,7 +31,7 @@ const elements = {
 
 // API Configuration
 const API_CONFIG = {
-    BASE_URL: 'http://localhost:3000/api',
+    BASE_URL: 'https://plagiarism-checker-backend.onrender.com',
     ENDPOINTS: {
         CHECK: '/check',
         EXPORT_PDF: '/export/pdf',
