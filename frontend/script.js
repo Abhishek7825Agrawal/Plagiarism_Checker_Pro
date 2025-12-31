@@ -25,7 +25,7 @@ const elements = {
     scoreProgress: document.querySelector('.score-progress'),
     resultsContainer: document.querySelector('.results-container'),
     heroSection: document.querySelector('.hero-section'),
-    animatedCursor: null // Will be created dynamically
+    bgAnimation: document.querySelector('.bg-animation')
 };
 
 /* =========================
@@ -33,113 +33,297 @@ const elements = {
 ========================= */
 let isChecking = false;
 let currentResult = null;
-let particles = [];
+let cursor = null;
+let cursorFollower = null;
+let isOnline = true;
 
 /* =========================
-   INIT
+   INITIALIZATION
 ========================= */
 document.addEventListener('DOMContentLoaded', () => {
-    elements.inputText.addEventListener('input', updateWordCount);
-    elements.checkBtn.addEventListener('click', checkPlagiarism);
+    // Initialize all components
+    initializeCursor();
+    initializeParticles();
+    initializeEventListeners();
+    initializeTheme();
+    initializeScrollProgress();
+    
+    // Initial updates
     updateWordCount();
     checkAPIHealth();
-    createAnimatedCursor();
-    initParticles();
     
-    // Add smooth focus effect to textarea
-    elements.inputText.addEventListener('focus', () => {
-        elements.inputText.parentElement.classList.add('focused');
-    });
+    // Add keyboard shortcuts
+    setupKeyboardShortcuts();
     
-    elements.inputText.addEventListener('blur', () => {
-        elements.inputText.parentElement.classList.remove('focused');
-    });
-    
-    // Add keyboard shortcut (Ctrl/Cmd + Enter to check)
-    elements.inputText.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-            e.preventDefault();
-            if (!elements.checkBtn.disabled) checkPlagiarism();
-        }
-    });
+    // Animate hero elements
+    animateHero();
 });
 
 /* =========================
-   ANIMATED CURSOR
+   CURSOR ANIMATIONS
 ========================= */
-function createAnimatedCursor() {
-    const cursor = document.createElement('div');
-    cursor.className = 'animated-cursor';
+function initializeCursor() {
+    // Create main cursor
+    cursor = document.createElement('div');
+    cursor.className = 'cursor';
     document.body.appendChild(cursor);
-    elements.animatedCursor = cursor;
     
-    // Update cursor position
+    // Create cursor follower
+    cursorFollower = document.createElement('div');
+    cursorFollower.className = 'cursor-follower';
+    document.body.appendChild(cursorFollower);
+    
+    // Mouse move listener
     document.addEventListener('mousemove', (e) => {
         cursor.style.left = `${e.clientX}px`;
         cursor.style.top = `${e.clientY}px`;
         
-        // Add pulse effect when hovering interactive elements
-        const target = e.target;
-        const isInteractive = target.matches('button, .check-btn, textarea, .sentence-item, .suggestion-item');
+        // Delayed follower movement
+        setTimeout(() => {
+            cursorFollower.style.left = `${e.clientX}px`;
+            cursorFollower.style.top = `${e.clientY}px`;
+        }, 50);
         
-        if (isInteractive) {
+        // Hover effects
+        const target = e.target;
+        if (target.matches('button, a, .check-btn, textarea, .sentence-item, .export-btn, .theme-toggle, .nav-link')) {
             cursor.classList.add('cursor-hover');
+            cursor.style.borderColor = 'var(--primary)';
         } else {
             cursor.classList.remove('cursor-hover');
+            cursor.style.borderColor = 'var(--border-color)';
         }
     });
     
     // Click animation
     document.addEventListener('mousedown', () => {
         cursor.classList.add('cursor-click');
+        cursor.style.transform = 'translate(-50%, -50%) scale(0.8)';
     });
     
     document.addEventListener('mouseup', () => {
         cursor.classList.remove('cursor-click');
+        cursor.style.transform = 'translate(-50%, -50%) scale(1)';
     });
     
     // Hide cursor when leaving window
     document.addEventListener('mouseleave', () => {
         cursor.style.opacity = '0';
+        cursorFollower.style.opacity = '0';
     });
     
     document.addEventListener('mouseenter', () => {
         cursor.style.opacity = '1';
+        cursorFollower.style.opacity = '1';
     });
 }
 
 /* =========================
-   PARTICLE BACKGROUND EFFECT
+   PARTICLE BACKGROUND
 ========================= */
-function initParticles() {
-    const particleCount = 30;
-    const container = elements.heroSection || document.body;
+function initializeParticles() {
+    if (!elements.bgAnimation) return;
     
+    const particleCount = 20;
     for (let i = 0; i < particleCount; i++) {
-        createParticle(container);
+        createParticle();
     }
 }
 
-function createParticle(container) {
+function createParticle() {
     const particle = document.createElement('div');
     particle.className = 'particle';
     
-    // Random size and position
-    const size = Math.random() * 3 + 1;
-    particle.style.width = `${size}px`;
-    particle.style.height = `${size}px`;
-    particle.style.left = `${Math.random() * 100}%`;
-    particle.style.top = `${Math.random() * 100}%`;
+    // Random properties
+    const size = Math.random() * 4 + 2;
+    const posX = Math.random() * 100;
+    const posY = Math.random() * 100;
+    const duration = Math.random() * 30 + 20;
+    const delay = Math.random() * 10;
     
-    // Random animation
-    const duration = Math.random() * 20 + 10;
-    particle.style.animationDuration = `${duration}s`;
-    particle.style.animationDelay = `${Math.random() * 5}s`;
+    particle.style.cssText = `
+        width: ${size}px;
+        height: ${size}px;
+        left: ${posX}%;
+        top: ${posY}%;
+        animation-duration: ${duration}s;
+        animation-delay: ${delay}s;
+        opacity: ${Math.random() * 0.3 + 0.1};
+        background: linear-gradient(45deg, 
+            var(${Math.random() > 0.5 ? '--primary' : '--secondary'}),
+            var(${Math.random() > 0.5 ? '--info' : '--success'})
+        );
+    `;
     
-    container.appendChild(particle);
+    elements.bgAnimation.appendChild(particle);
+}
+
+/* =========================
+   SCROLL PROGRESS
+========================= */
+function initializeScrollProgress() {
+    const scrollProgress = document.createElement('div');
+    scrollProgress.className = 'scroll-progress';
+    document.body.appendChild(scrollProgress);
     
-    // Store for potential cleanup
-    particles.push(particle);
+    window.addEventListener('scroll', () => {
+        const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+        const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+        const scrolled = Math.min((winScroll / height) * 100, 100);
+        scrollProgress.style.transform = `scaleX(${scrolled / 100})`;
+    });
+}
+
+/* =========================
+   THEME MANAGEMENT
+========================= */
+function initializeTheme() {
+    const themeToggle = document.querySelector('.theme-toggle');
+    if (!themeToggle) return;
+    
+    // Check saved theme
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
+    
+    themeToggle.addEventListener('click', () => {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        
+        // Add animation
+        themeToggle.style.transform = 'rotate(360deg)';
+        setTimeout(() => {
+            themeToggle.style.transform = '';
+        }, 500);
+        
+        // Apply theme
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        updateThemeIcon(newTheme);
+        
+        // Add theme change animation
+        document.body.style.opacity = '0.8';
+        setTimeout(() => {
+            document.body.style.opacity = '1';
+        }, 300);
+    });
+}
+
+function updateThemeIcon(theme) {
+    const icon = document.querySelector('.theme-toggle i');
+    if (!icon) return;
+    
+    icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+}
+
+/* =========================
+   EVENT LISTENERS SETUP
+========================= */
+function initializeEventListeners() {
+    // Text area events
+    elements.inputText.addEventListener('input', updateWordCount);
+    elements.inputText.addEventListener('focus', () => {
+        elements.inputText.parentElement.classList.add('focused');
+    });
+    elements.inputText.addEventListener('blur', () => {
+        elements.inputText.parentElement.classList.remove('focused');
+    });
+    
+    // Check button event
+    elements.checkBtn.addEventListener('click', checkPlagiarism);
+    
+    // Add ripple effect to all buttons
+    document.querySelectorAll('button').forEach(button => {
+        button.addEventListener('click', createRippleEffect);
+    });
+}
+
+/* =========================
+   RIPPLE EFFECT
+========================= */
+function createRippleEffect(e) {
+    const button = e.currentTarget;
+    const ripple = document.createElement('span');
+    const diameter = Math.max(button.clientWidth, button.clientHeight);
+    const radius = diameter / 2;
+    
+    ripple.style.width = ripple.style.height = `${diameter}px`;
+    ripple.style.left = `${e.clientX - button.getBoundingClientRect().left - radius}px`;
+    ripple.style.top = `${e.clientY - button.getBoundingClientRect().top - radius}px`;
+    ripple.className = 'ripple';
+    
+    // Remove existing ripples
+    const existingRipple = button.querySelector('.ripple');
+    if (existingRipple) {
+        existingRipple.remove();
+    }
+    
+    button.appendChild(ripple);
+    
+    // Remove ripple after animation
+    setTimeout(() => {
+        ripple.remove();
+    }, 600);
+}
+
+/* =========================
+   HERO ANIMATION
+========================= */
+function animateHero() {
+    const heroTitle = document.querySelector('.hero h2');
+    const heroSubtitle = document.querySelector('.subtitle');
+    const stats = document.querySelectorAll('.stat');
+    
+    if (heroTitle) {
+        heroTitle.style.animation = 'floatUp 1s ease-out forwards';
+    }
+    
+    if (heroSubtitle) {
+        heroSubtitle.style.animation = 'floatUp 1s ease-out 0.2s forwards';
+        heroSubtitle.style.opacity = '0';
+    }
+    
+    // Animate stats
+    stats.forEach((stat, index) => {
+        stat.style.animation = `floatUp 0.5s ease-out ${0.3 + index * 0.1}s forwards`;
+        stat.style.opacity = '0';
+    });
+}
+
+/* =========================
+   KEYBOARD SHORTCUTS
+========================= */
+function setupKeyboardShortcuts() {
+    // Ctrl/Cmd + Enter to check plagiarism
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            if (!elements.checkBtn.disabled) {
+                checkPlagiarism();
+            }
+        }
+        
+        // Ctrl/Cmd + S to save
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            exportResults();
+        }
+        
+        // Escape to clear text
+        if (e.key === 'Escape' && document.activeElement === elements.inputText) {
+            elements.inputText.value = '';
+            updateWordCount();
+            elements.inputText.focus();
+        }
+    });
+    
+    // Focus textarea on /
+    document.addEventListener('keydown', (e) => {
+        if (e.key === '/' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+            elements.inputText.focus();
+        }
+    });
 }
 
 /* =========================
@@ -150,39 +334,33 @@ function updateWordCount() {
     const words = text.trim() ? text.trim().split(/\s+/).length : 0;
     const chars = text.length;
     
-    // Animate the count change
-    animateCounter(elements.wordCount, `${words} words, ${chars} chars`);
+    // Add animation class
+    elements.wordCount.classList.add('updating');
     
-    // Update button state with animation
-    if (chars < 50) {
-        elements.checkBtn.disabled = true;
-        elements.checkBtn.classList.remove('pulse');
-    } else {
-        elements.checkBtn.disabled = false;
-        elements.checkBtn.classList.add('pulse');
-        
-        // Add subtle glow effect when ready
-        if (chars >= 50 && chars < 100) {
-            elements.checkBtn.classList.add('ready-glow');
-        } else {
-            elements.checkBtn.classList.remove('ready-glow');
-        }
-    }
-}
-
-/* =========================
-   COUNTER ANIMATION
-========================= */
-function animateCounter(element, newText) {
-    if (element.textContent === newText) return;
-    
-    element.style.opacity = '0.5';
-    element.style.transform = 'translateY(-5px)';
-    
+    // Animate the number change
     setTimeout(() => {
-        element.textContent = newText;
-        element.style.opacity = '1';
-        element.style.transform = 'translateY(0)';
+        elements.wordCount.textContent = `${words} words, ${chars} chars`;
+        elements.wordCount.classList.remove('updating');
+        
+        // Update button state with smooth transition
+        if (chars < 50) {
+            elements.checkBtn.disabled = true;
+            elements.checkBtn.style.opacity = '0.6';
+            elements.checkBtn.style.transform = 'scale(0.98)';
+            elements.checkBtn.classList.remove('pulse');
+        } else {
+            elements.checkBtn.disabled = false;
+            elements.checkBtn.style.opacity = '1';
+            elements.checkBtn.style.transform = 'scale(1)';
+            elements.checkBtn.classList.add('pulse');
+            
+            // Add ready glow effect
+            if (chars >= 50 && chars < 100) {
+                elements.checkBtn.style.boxShadow = '0 0 20px rgba(16, 185, 129, 0.5)';
+            } else {
+                elements.checkBtn.style.boxShadow = '';
+            }
+        }
     }, 150);
 }
 
@@ -191,33 +369,86 @@ function animateCounter(element, newText) {
 ========================= */
 async function checkAPIHealth() {
     try {
+        elements.resultStatus.textContent = 'Connecting...';
+        elements.resultStatus.className = 'result-status checking';
+        
         const res = await fetch(
             `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.HEALTH}`,
-            { cache: 'no-store' }
+            { 
+                cache: 'no-store',
+                timeout: 5000 
+            }
         );
         
-        // Add connection status animation
-        const statusEl = elements.resultStatus;
-        
         if (res.ok) {
-            statusEl.textContent = 'API Connected';
-            statusEl.style.color = '#10b981';
-            statusEl.classList.add('status-pulse');
+            isOnline = true;
+            elements.resultStatus.textContent = 'API Connected';
+            elements.resultStatus.className = 'result-status connected';
             
-            // Remove pulse after 3 seconds
+            // Show success toast
+            showToast('API connected successfully!', 'success');
+            
+            // Pulse animation
             setTimeout(() => {
-                statusEl.classList.remove('status-pulse');
+                elements.resultStatus.classList.remove('connected');
             }, 3000);
         } else {
             throw new Error('API returned non-OK status');
         }
-    } catch {
-        elements.resultStatus.textContent = 'API Offline (Fallback Enabled)';
-        elements.resultStatus.style.color = '#f59e0b';
+    } catch (error) {
+        isOnline = false;
+        elements.resultStatus.textContent = 'API Offline (Fallback Mode)';
+        elements.resultStatus.className = 'result-status offline';
         
-        // Add warning animation
-        elements.resultStatus.classList.add('warning-pulse');
+        // Show warning toast
+        showToast('Using client-side fallback mode', 'warning');
     }
+}
+
+/* =========================
+   TOAST NOTIFICATIONS
+========================= */
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <i class="fas fa-${getToastIcon(type)}"></i>
+        <span>${message}</span>
+        <button class="toast-close">&times;</button>
+    `;
+    
+    const container = document.querySelector('.toast-container') || createToastContainer();
+    container.appendChild(toast);
+    
+    // Close button
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+        toast.remove();
+    });
+    
+    // Auto remove
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.style.animation = 'slideInRight 0.3s ease reverse forwards';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, 5000);
+}
+
+function getToastIcon(type) {
+    const icons = {
+        success: 'check-circle',
+        error: 'exclamation-circle',
+        warning: 'exclamation-triangle',
+        info: 'info-circle'
+    };
+    return icons[type] || 'info-circle';
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+    return container;
 }
 
 /* =========================
@@ -227,309 +458,399 @@ async function checkPlagiarism() {
     if (isChecking) return;
     
     const text = elements.inputText.value.trim();
-    if (text.length < 50) return;
-    
-    isChecking = true;
-    elements.checkBtn.disabled = true;
-    elements.loadingSpinner.style.display = 'block';
-    elements.resultStatus.textContent = 'Checking...';
-    
-    // Add loading animation to results container
-    if (elements.resultsContainer) {
-        elements.resultsContainer.classList.add('loading');
+    if (text.length < 50) {
+        showToast('Please enter at least 50 characters', 'warning');
+        return;
     }
     
-    // Button loading state
-    elements.checkBtn.innerHTML = `
-        <span class="btn-loading-spinner"></span>
-        Checking...
-    `;
+    // Reset previous results
+    clearPreviousResults();
+    
+    // Set checking state
+    isChecking = true;
+    updateUIForChecking();
     
     try {
-        const response = await fetch(
-            `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHECK}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text })
-            }
-        );
+        let result;
         
-        if (!response.ok) {
-            throw new Error('Backend error');
+        if (isOnline) {
+            result = await checkWithAPI(text);
+        } else {
+            result = await checkWithFallback(text);
         }
         
-        const data = await response.json();
-        
-        const sentenceAnalysis = generateSentenceAnalysis(text);
-        const score = Math.round(data.overallPlagiarism || 0);
-        
-        const result = {
-            overallPlagiarism: score,
-            textLength: text.length,
-            wordCount: text.split(/\s+/).length,
-            detailedReport: {
-                sentenceAnalysis
-            },
-            suggestions: generateSuggestions(score)
-        };
-        
         currentResult = result;
+        await displayResults(result);
         
-        // Add success animation before displaying results
-        await animateSuccess();
-        displayResults(result);
+        // Show success message
+        showToast(`Analysis complete! Score: ${result.overallPlagiarism}%`, 'success');
+        
+        // Trigger confetti for low plagiarism
+        if (result.overallPlagiarism < 20) {
+            createConfetti();
+        }
         
     } catch (error) {
-        console.error(error);
+        console.error('Plagiarism check failed:', error);
+        showToast('Analysis failed. Using fallback mode.', 'error');
         
-        // Animate error state
-        await animateError();
-        performClientSideFallback(text);
+        const result = await checkWithFallback(text);
+        currentResult = result;
+        await displayResults(result);
         
     } finally {
         isChecking = false;
-        elements.checkBtn.disabled = false;
-        elements.loadingSpinner.style.display = 'none';
-        elements.checkBtn.innerHTML = 'Check for Plagiarism';
-        
-        // Remove loading state
-        if (elements.resultsContainer) {
-            elements.resultsContainer.classList.remove('loading');
-        }
+        updateUIAfterChecking();
+    }
+}
+
+function clearPreviousResults() {
+    elements.sentencesList.innerHTML = '';
+    elements.suggestionsList.innerHTML = '';
+}
+
+function updateUIForChecking() {
+    elements.checkBtn.disabled = true;
+    elements.checkBtn.innerHTML = `
+        <span class="loading-spinner"></span>
+        Analyzing...
+    `;
+    elements.loadingSpinner.style.display = 'block';
+    elements.resultStatus.textContent = 'Checking for plagiarism...';
+    
+    // Add shimmer effect to results container
+    if (elements.resultsContainer) {
+        elements.resultsContainer.classList.add('shimmer');
+    }
+}
+
+function updateUIAfterChecking() {
+    elements.checkBtn.disabled = false;
+    elements.checkBtn.innerHTML = '<i class="fas fa-search"></i> Check for Plagiarism';
+    elements.loadingSpinner.style.display = 'none';
+    
+    // Remove shimmer effect
+    if (elements.resultsContainer) {
+        elements.resultsContainer.classList.remove('shimmer');
     }
 }
 
 /* =========================
-   ANIMATION FUNCTIONS
+   API CHECK
 ========================= */
-async function animateSuccess() {
-    return new Promise(resolve => {
-        // Add success particles
-        createSuccessParticles();
-        
-        // Add subtle scale animation to results container
-        if (elements.resultsContainer) {
-            elements.resultsContainer.style.transform = 'scale(0.95)';
-            
-            setTimeout(() => {
-                elements.resultsContainer.style.transform = 'scale(1)';
-                elements.resultsContainer.style.transition = 'transform 0.3s ease';
-                resolve();
-            }, 100);
-        } else {
-            resolve();
+async function checkWithAPI(text) {
+    const response = await fetch(
+        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHECK}`,
+        {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ 
+                text,
+                options: {
+                    deepSearch: true,
+                    checkSynonyms: true,
+                    excludeQuotes: true
+                }
+            })
         }
-    });
-}
+    );
 
-async function animateError() {
-    return new Promise(resolve => {
-        // Shake animation for error
-        elements.resultStatus.classList.add('shake');
-        
-        setTimeout(() => {
-            elements.resultStatus.classList.remove('shake');
-            resolve();
-        }, 500);
-    });
-}
-
-function createSuccessParticles() {
-    const particleCount = 15;
-    const container = document.querySelector('.score-display') || document.body;
-    
-    for (let i = 0; i < particleCount; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'success-particle';
-        
-        // Random position around the score display
-        const angle = Math.random() * Math.PI * 2;
-        const distance = Math.random() * 50 + 30;
-        const x = Math.cos(angle) * distance;
-        const y = Math.sin(angle) * distance;
-        
-        particle.style.left = `calc(50% + ${x}px)`;
-        particle.style.top = `calc(50% + ${y}px)`;
-        particle.style.backgroundColor = getScoreColor(50); // Default color
-        
-        container.appendChild(particle);
-        
-        // Remove particle after animation
-        setTimeout(() => {
-            particle.remove();
-        }, 1000);
+    if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
     }
+
+    const data = await response.json();
+    
+    // Enhance API data with local analysis
+    const sentenceAnalysis = generateSentenceAnalysis(text);
+    const score = Math.round(data.overallPlagiarism || calculateScore(sentenceAnalysis));
+    
+    return {
+        overallPlagiarism: score,
+        textLength: text.length,
+        wordCount: text.split(/\s+/).length,
+        detailedReport: {
+            sentenceAnalysis
+        },
+        suggestions: generateSuggestions(score),
+        sources: data.sources || [],
+        checkedAt: new Date().toISOString()
+    };
 }
 
 /* =========================
-   TOKENIZATION & SIMILARITY
+   FALLBACK CHECK
 ========================= */
-function tokenize(sentence) {
-    return sentence
-        .toLowerCase()
-        .replace(/[^a-z\s]/g, '')
-        .split(/\s+/)
-        .filter(Boolean);
-}
-
-function jaccardSimilarity(a, b) {
-    const setA = new Set(tokenize(a));
-    const setB = new Set(tokenize(b));
+async function checkWithFallback(text) {
+    // Show fallback notification
+    elements.resultStatus.textContent = 'Using Advanced Client-side Analysis';
+    elements.resultStatus.className = 'result-status warning';
     
-    const intersection = new Set([...setA].filter(x => setB.has(x)));
-    const union = new Set([...setA, ...setB]);
+    // Simulate processing delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
-    return union.size === 0
-        ? 0
-        : Math.round((intersection.size / union.size) * 100);
+    const sentenceAnalysis = generateSentenceAnalysis(text);
+    const score = calculateScore(sentenceAnalysis);
+    
+    return {
+        overallPlagiarism: score,
+        textLength: text.length,
+        wordCount: text.split(/\s+/).length,
+        detailedReport: {
+            sentenceAnalysis
+        },
+        suggestions: generateSuggestions(score),
+        sources: [],
+        checkedAt: new Date().toISOString(),
+        isFallback: true
+    };
 }
 
 /* =========================
-   SENTENCE ANALYSIS (REAL)
+   SCORE CALCULATION
+========================= */
+function calculateScore(sentenceAnalysis) {
+    if (sentenceAnalysis.length === 0) return 0;
+    
+    const totalSimilarity = sentenceAnalysis.reduce((sum, item) => sum + item.similarity, 0);
+    const avgSimilarity = totalSimilarity / sentenceAnalysis.length;
+    
+    // Adjust score based on text length
+    const lengthFactor = Math.min(sentenceAnalysis.length / 10, 1);
+    const adjustedScore = avgSimilarity * lengthFactor;
+    
+    return Math.min(Math.round(adjustedScore), 100);
+}
+
+/* =========================
+   SENTENCE ANALYSIS
 ========================= */
 function generateSentenceAnalysis(text) {
     const sentences = text
         .split(/[.!?]+/)
         .map(s => s.trim())
-        .filter(Boolean);
+        .filter(s => s.length > 10);
+    
+    if (sentences.length === 0) return [];
     
     return sentences.map((sentence, index) => {
         let maxSimilarity = 0;
+        let similarSentence = '';
         
+        // Check against previous sentences
         for (let i = 0; i < index; i++) {
-            const sim = jaccardSimilarity(sentence, sentences[i]);
-            if (sim > maxSimilarity) maxSimilarity = sim;
+            const similarity = calculateSentenceSimilarity(sentence, sentences[i]);
+            if (similarity > maxSimilarity) {
+                maxSimilarity = similarity;
+                similarSentence = sentences[i];
+            }
         }
+        
+        // Check for common phrases
+        const commonPhrases = [
+            "in conclusion", "however", "therefore", "for example",
+            "on the other hand", "as a result", "in addition"
+        ];
+        
+        commonPhrases.forEach(phrase => {
+            if (sentence.toLowerCase().includes(phrase)) {
+                maxSimilarity = Math.max(maxSimilarity, 15);
+            }
+        });
         
         return {
             sentence,
             position: index,
-            similarity: maxSimilarity
+            similarity: Math.round(maxSimilarity),
+            similarSentence: similarSentence || null,
+            category: getSimilarityCategory(maxSimilarity)
         };
     });
 }
 
-/* =========================
-   FALLBACK MODE
-========================= */
-function performClientSideFallback(text) {
-    // Animate fallback notification
-    elements.resultStatus.textContent = 'Using Client-side Analysis';
-    elements.resultStatus.classList.add('fallback-notice');
+function calculateSentenceSimilarity(a, b) {
+    // Tokenize sentences
+    const tokensA = tokenize(a);
+    const tokensB = tokenize(b);
     
-    setTimeout(() => {
-        elements.resultStatus.classList.remove('fallback-notice');
-    }, 2000);
+    if (tokensA.length === 0 || tokensB.length === 0) return 0;
     
-    const sentenceAnalysis = generateSentenceAnalysis(text);
-    const score = Math.min(100, sentenceAnalysis.length * 5);
+    // Jaccard Similarity
+    const setA = new Set(tokensA);
+    const setB = new Set(tokensB);
     
-    const result = {
-        overallPlagiarism: score,
-        detailedReport: { sentenceAnalysis },
-        suggestions: generateSuggestions(score)
-    };
+    const intersection = new Set([...setA].filter(x => setB.has(x)));
+    const union = new Set([...setA, ...setB]);
     
-    currentResult = result;
-    displayResults(result);
+    const jaccard = union.size > 0 ? intersection.size / union.size : 0;
+    
+    // Cosine Similarity (simplified)
+    const wordFreqA = getWordFrequency(tokensA);
+    const wordFreqB = getWordFrequency(tokensB);
+    
+    let dotProduct = 0;
+    let magnitudeA = 0;
+    let magnitudeB = 0;
+    
+    Object.keys(wordFreqA).forEach(word => {
+        magnitudeA += Math.pow(wordFreqA[word], 2);
+        if (wordFreqB[word]) {
+            dotProduct += wordFreqA[word] * wordFreqB[word];
+        }
+    });
+    
+    Object.keys(wordFreqB).forEach(word => {
+        magnitudeB += Math.pow(wordFreqB[word], 2);
+    });
+    
+    magnitudeA = Math.sqrt(magnitudeA);
+    magnitudeB = Math.sqrt(magnitudeB);
+    
+    const cosine = magnitudeA > 0 && magnitudeB > 0 ? dotProduct / (magnitudeA * magnitudeB) : 0;
+    
+    // Combine scores
+    const combinedScore = (jaccard * 0.6 + cosine * 0.4) * 100;
+    
+    return Math.min(Math.round(combinedScore), 100);
+}
+
+function tokenize(sentence) {
+    return sentence
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .split(/\s+/)
+        .filter(word => word.length > 2);
+}
+
+function getWordFrequency(tokens) {
+    const freq = {};
+    tokens.forEach(token => {
+        freq[token] = (freq[token] || 0) + 1;
+    });
+    return freq;
+}
+
+function getSimilarityCategory(similarity) {
+    if (similarity >= 70) return 'high';
+    if (similarity >= 40) return 'medium';
+    return 'low';
 }
 
 /* =========================
    DISPLAY RESULTS
 ========================= */
-function displayResults(result) {
-    const score = result.overallPlagiarism || 0;
+async function displayResults(result) {
+    // Animate results container
+    if (elements.resultsContainer) {
+        elements.resultsContainer.style.opacity = '0';
+        elements.resultsContainer.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            elements.resultsContainer.style.opacity = '1';
+            elements.resultsContainer.style.transform = 'translateY(0)';
+            elements.resultsContainer.style.transition = 'all 0.5s ease';
+        }, 100);
+    }
     
-    // Animate score counter
-    animateScoreCounter(score);
+    // Animate score
+    await animateScore(result.overallPlagiarism);
     
-    const circumference = 2 * Math.PI * 54;
-    const offset = circumference - (score / 100) * circumference;
+    // Update category
+    updateScoreCategory(result.overallPlagiarism);
     
-    // Animate progress circle
-    elements.scoreProgress.style.transition = 'stroke-dashoffset 1.5s ease-out';
-    elements.scoreProgress.style.strokeDashoffset = offset;
-    
-    // Update category with animation
-    updateScoreCategory(score);
-    
-    // Display sentences with staggered animation
+    // Display sentences with delay
     displaySentences(result.detailedReport.sentenceAnalysis);
     
     // Display suggestions
     displaySuggestions(result.suggestions);
     
-    elements.resultStatus.textContent = 'Analysis Complete';
-    elements.resultStatus.style.color = '#10b981';
+    // Update status
+    elements.resultStatus.textContent = result.isFallback 
+        ? 'Analysis Complete (Fallback Mode)' 
+        : 'Analysis Complete';
+    elements.resultStatus.className = 'result-status success';
     
-    // Scroll to results smoothly
+    // Scroll to results
     setTimeout(() => {
-        elements.resultsContainer.scrollIntoView({
+        elements.resultsContainer?.scrollIntoView({
             behavior: 'smooth',
             block: 'start'
         });
     }, 300);
-}
-
-/* =========================
-   SCORE COUNTER ANIMATION
-========================= */
-function animateScoreCounter(targetScore) {
-    const duration = 1500;
-    const startTime = Date.now();
-    const startScore = parseInt(elements.plagiarismScore.textContent) || 0;
     
-    function updateCounter() {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        // Easing function for smooth animation
-        const easeOut = 1 - Math.pow(1 - progress, 3);
-        const currentScore = Math.round(startScore + (targetScore - startScore) * easeOut);
-        
-        elements.plagiarismScore.textContent = currentScore;
-        
-        // Update progress color during animation
-        const displayScore = targetScore >= startScore ? currentScore : targetScore;
-        elements.scoreProgress.style.stroke = getScoreColor(displayScore);
-        
-        if (progress < 1) {
-            requestAnimationFrame(updateCounter);
-        } else {
-            elements.plagiarismScore.textContent = targetScore;
-        }
+    // Add export button if not exists
+    if (!document.querySelector('.export-btn')) {
+        addExportButton();
     }
-    
-    updateCounter();
 }
 
 /* =========================
-   SCORE COLOR UTILITY
+   SCORE ANIMATION
 ========================= */
+async function animateScore(finalScore) {
+    return new Promise(resolve => {
+        const startScore = parseInt(elements.plagiarismScore.textContent) || 0;
+        const duration = 1500;
+        const startTime = Date.now();
+        
+        function update() {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // Easing function
+            const easeOut = 1 - Math.pow(1 - progress, 3);
+            const currentScore = Math.round(startScore + (finalScore - startScore) * easeOut);
+            
+            elements.plagiarismScore.textContent = currentScore;
+            
+            // Update progress circle
+            const circumference = 2 * Math.PI * 54;
+            const offset = circumference - (currentScore / 100) * circumference;
+            elements.scoreProgress.style.strokeDashoffset = offset;
+            elements.scoreProgress.style.stroke = getScoreColor(currentScore);
+            
+            // Pulse animation
+            if (progress < 1) {
+                elements.plagiarismScore.classList.add('animating');
+                requestAnimationFrame(update);
+            } else {
+                elements.plagiarismScore.classList.remove('animating');
+                resolve();
+            }
+        }
+        
+        update();
+    });
+}
+
 function getScoreColor(score) {
-    if (score >= 80) return '#ef4444'; // Red
-    if (score >= 50) return '#f59e0b'; // Orange
-    if (score >= 20) return '#3b82f6'; // Blue
-    return '#10b981'; // Green
+    if (score >= 80) return 'var(--danger)';
+    if (score >= 50) return 'var(--warning)';
+    if (score >= 20) return 'var(--info)';
+    return 'var(--success)';
 }
 
 /* =========================
    UPDATE SCORE CATEGORY
 ========================= */
 function updateScoreCategory(score) {
-    let category = 'Original';
-    let color = '#10b981';
+    let category, color;
     
     if (score >= 80) {
         category = 'High Plagiarism';
-        color = '#ef4444';
+        color = 'var(--danger)';
     } else if (score >= 50) {
-        category = 'Moderate';
-        color = '#f59e0b';
+        category = 'Moderate Plagiarism';
+        color = 'var(--warning)';
     } else if (score >= 20) {
-        category = 'Low';
-        color = '#3b82f6';
+        category = 'Low Similarity';
+        color = 'var(--info)';
+    } else {
+        category = 'Original Content';
+        color = 'var(--success)';
     }
     
     // Animate category change
@@ -541,46 +862,67 @@ function updateScoreCategory(score) {
         elements.scoreCategory.style.color = color;
         elements.scoreCategory.style.opacity = '1';
         elements.scoreCategory.style.transform = 'translateY(0)';
+        elements.scoreCategory.style.transition = 'all 0.3s ease';
     }, 300);
 }
 
 /* =========================
-   SENTENCE DISPLAY WITH ANIMATION
+   DISPLAY SENTENCES
 ========================= */
 function displaySentences(sentences) {
     elements.sentencesList.innerHTML = '';
     
-    sentences.forEach((item, i) => {
+    if (sentences.length === 0) {
+        elements.sentencesList.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-comment-slash"></i>
+                <p>No sentences to analyze</p>
+            </div>
+        `;
+        return;
+    }
+    
+    sentences.forEach((item, index) => {
         setTimeout(() => {
             const div = document.createElement('div');
-            div.className = 'sentence-item';
+            div.className = `sentence-item ${item.category}`;
             
-            // Color code based on similarity
-            let similarityClass = 'similarity-low';
-            if (item.similarity >= 50) similarityClass = 'similarity-high';
-            else if (item.similarity >= 20) similarityClass = 'similarity-medium';
+            const scoreClass = item.similarity >= 70 ? 'high' : 
+                             item.similarity >= 40 ? 'medium' : 'low';
             
             div.innerHTML = `
                 <div class="sentence-header">
-                    <strong>Sentence ${i + 1}</strong>
-                    <span class="similarity-badge ${similarityClass}">
+                    <strong>Sentence ${index + 1}</strong>
+                    <span class="sentence-score ${scoreClass}">
                         ${item.similarity}% similarity
                     </span>
                 </div>
                 <p class="sentence-text">${item.sentence}</p>
+                ${item.similarSentence ? `
+                    <div class="similar-sentence">
+                        <small>Similar to: "${item.similarSentence.substring(0, 100)}..."</small>
+                    </div>
+                ` : ''}
             `;
             
-            // Add animation class
-            div.classList.add('sentence-enter');
+            // Add entry animation
+            div.style.animation = `slideInUp 0.5s ease ${index * 0.1}s forwards`;
+            div.style.opacity = '0';
             
             elements.sentencesList.appendChild(div);
             
-            // Remove animation class after animation completes
-            setTimeout(() => {
-                div.classList.remove('sentence-enter');
-            }, 500);
+            // Add hover effect
+            div.addEventListener('mouseenter', () => {
+                div.style.transform = 'translateY(-2px)';
+                div.style.boxShadow = 'var(--shadow-md)';
+            });
             
-        }, i * 100); // Staggered animation
+            div.addEventListener('mouseleave', () => {
+                div.style.transform = '';
+                div.style.boxShadow = '';
+            });
+            
+        }, index * 100);
     });
 }
 
@@ -588,42 +930,49 @@ function displaySentences(sentences) {
    SUGGESTIONS
 ========================= */
 function generateSuggestions(score) {
+    const suggestions = [];
+    
     if (score >= 80) {
-        return [
-            'High plagiarism detected. Consider a complete rewrite.',
-            'Add proper citations and references.',
-            'Use quotation marks for direct quotes.',
-            'Paraphrase ideas in your own words.'
-        ];
+        suggestions.push(
+            'Consider a complete rewrite of the highlighted sections',
+            'Use proper citation for borrowed ideas',
+            'Add more original analysis and perspective',
+            'Use quotation marks for direct quotes',
+            'Paraphrase ideas in your own words'
+        );
+    } else if (score >= 50) {
+        suggestions.push(
+            'Rephrase sentences with high similarity',
+            'Combine information from multiple sources',
+            'Add your unique insights and analysis',
+            'Use synonyms and vary sentence structure',
+            'Include more supporting evidence'
+        );
+    } else if (score >= 20) {
+        suggestions.push(
+            'Review highlighted sentences for originality',
+            'Add more specific examples and details',
+            'Strengthen your unique voice',
+            'Consider restructuring some paragraphs',
+            'Add transitional phrases for better flow'
+        );
+    } else {
+        suggestions.push(
+            'Great! Content shows high originality',
+            'Continue using your unique writing style',
+            'Consider adding more supporting research',
+            'Maintain this level of originality',
+            'Share your writing process with others'
+        );
     }
-    if (score >= 50) {
-        return [
-            'Moderate plagiarism detected.',
-            'Rephrase highlighted sentences.',
-            'Add more original analysis.',
-            'Combine multiple sources with original synthesis.'
-        ];
-    }
-    if (score >= 20) {
-        return [
-            'Low similarity detected.',
-            'Review highlighted sentences.',
-            'Add your unique perspective.',
-            'Good overall originality.'
-        ];
-    }
-    return [
-        'Excellent! Content is highly original.',
-        'Maintain your unique writing style.',
-        'Consider adding more supporting evidence.',
-        'Well done on creating original content.'
-    ];
+    
+    return suggestions;
 }
 
-function displaySuggestions(list) {
+function displaySuggestions(suggestions) {
     elements.suggestionsList.innerHTML = '';
     
-    list.forEach((text, i) => {
+    suggestions.forEach((text, index) => {
         setTimeout(() => {
             const div = document.createElement('div');
             div.className = 'suggestion-item';
@@ -632,74 +981,303 @@ function displaySuggestions(list) {
                 <span class="suggestion-text">${text}</span>
             `;
             
-            // Add animation
-            div.classList.add('suggestion-enter');
+            // Add entry animation
+            div.style.animation = `slideInUp 0.5s ease ${index * 0.15}s forwards`;
+            div.style.opacity = '0';
             
             elements.suggestionsList.appendChild(div);
-            
-            // Remove animation class
-            setTimeout(() => {
-                div.classList.remove('suggestion-enter');
-            }, 500);
-            
-        }, i * 150);
+        }, index * 150);
     });
 }
 
 /* =========================
-   EXPORT FUNCTIONALITY (Optional)
+   EXPORT FUNCTIONALITY
 ========================= */
-function exportResults(format = 'txt') {
-    if (!currentResult) return;
-    
-    let content = `Plagiarism Check Results\n`;
-    content += `=======================\n\n`;
-    content += `Overall Score: ${currentResult.overallPlagiarism}%\n`;
-    content += `Word Count: ${currentResult.wordCount}\n`;
-    content += `Text Length: ${currentResult.textLength} characters\n\n`;
-    content += `Sentence Analysis:\n`;
-    
-    currentResult.detailedReport.sentenceAnalysis.forEach((item, i) => {
-        content += `${i + 1}. ${item.similarity}% similarity: ${item.sentence}\n`;
-    });
-    
-    content += `\nSuggestions:\n`;
-    currentResult.suggestions.forEach(suggestion => {
-        content += `• ${suggestion}\n`;
-    });
-    
-    if (format === 'txt') {
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `plagiarism-report-${new Date().toISOString().slice(0,10)}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-    
-    // Add export confirmation animation
+function addExportButton() {
     const exportBtn = document.createElement('button');
-    exportBtn.textContent = '✓ Exported!';
-    exportBtn.className = 'export-confirmation';
-    document.body.appendChild(exportBtn);
+    exportBtn.className = 'btn-primary export-btn';
+    exportBtn.innerHTML = '<i class="fas fa-download"></i> Export Results';
+    exportBtn.style.marginTop = '20px';
     
-    setTimeout(() => {
-        exportBtn.remove();
-    }, 2000);
+    exportBtn.addEventListener('click', exportResults);
+    
+    const actionButtons = document.querySelector('.action-buttons');
+    if (actionButtons) {
+        actionButtons.appendChild(exportBtn);
+    } else if (elements.resultsContainer) {
+        elements.resultsContainer.appendChild(exportBtn);
+    }
 }
 
-// Add export button if needed
-document.addEventListener('DOMContentLoaded', () => {
-    const exportBtn = document.createElement('button');
-    exportBtn.textContent = 'Export Results';
-    exportBtn.className = 'export-btn';
-    exportBtn.addEventListener('click', () => exportResults('txt'));
+function exportResults() {
+    if (!currentResult) {
+        showToast('No results to export', 'warning');
+        return;
+    }
     
-    // Insert after results container if it exists
-    if (elements.resultsContainer) {
-        elements.resultsContainer.parentNode.insertBefore(exportBtn, elements.resultsContainer.nextSibling);
+    // Show export modal
+    showExportModal();
+}
+
+function showExportModal() {
+    // Remove existing modal
+    const existingModal = document.querySelector('.export-modal');
+    if (existingModal) existingModal.remove();
+    
+    const modal = document.createElement('div');
+    modal.className = 'export-modal';
+    
+    modal.innerHTML = `
+        <div class="export-modal-content">
+            <div class="export-modal-header">
+                <h3><i class="fas fa-download"></i> Export Results</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="export-options">
+                <div class="export-option" data-format="txt">
+                    <div class="export-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div class="export-info">
+                        <h4>Text File (.txt)</h4>
+                        <p>Simple text format, compatible with all editors</p>
+                    </div>
+                </div>
+                <div class="export-option" data-format="json">
+                    <div class="export-icon">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <div class="export-info">
+                        <h4>JSON Data (.json)</h4>
+                        <p>Structured data for developers and APIs</p>
+                    </div>
+                </div>
+                <div class="export-option" data-format="pdf">
+                    <div class="export-icon">
+                        <i class="fas fa-file-pdf"></i>
+                    </div>
+                    <div class="export-info">
+                        <h4>PDF Document (.pdf)</h4>
+                        <p>Formatted document suitable for printing</p>
+                    </div>
+                </div>
+            </div>
+            <div class="export-actions">
+                <button class="btn-secondary" id="cancelExport">Cancel</button>
+                <button class="btn-primary" id="confirmExport">Export</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add event listeners
+    modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
+    modal.querySelector('#cancelExport').addEventListener('click', () => modal.remove());
+    
+    // Format selection
+    let selectedFormat = 'txt';
+    modal.querySelectorAll('.export-option').forEach(option => {
+        option.addEventListener('click', () => {
+            modal.querySelectorAll('.export-option').forEach(o => 
+                o.classList.remove('selected')
+            );
+            option.classList.add('selected');
+            selectedFormat = option.dataset.format;
+        });
+    });
+    
+    // Confirm export
+    modal.querySelector('#confirmExport').addEventListener('click', () => {
+        generateExport(selectedFormat);
+        modal.remove();
+        showToast(`Results exported as ${selectedFormat.toUpperCase()}`, 'success');
+    });
+    
+    // Close on background click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
+function generateExport(format) {
+    if (!currentResult) return;
+    
+    let content, mimeType, extension;
+    
+    switch(format) {
+        case 'json':
+            content = JSON.stringify(currentResult, null, 2);
+            mimeType = 'application/json';
+            extension = 'json';
+            break;
+            
+        case 'pdf':
+            // For PDF, we'll create a printable HTML page
+            generatePDF();
+            return;
+            
+        case 'txt':
+        default:
+            content = formatTextReport();
+            mimeType = 'text/plain';
+            extension = 'txt';
+    }
+    
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    
+    a.href = url;
+    a.download = `plagiarism-report-${new Date().toISOString().slice(0,10)}.${extension}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function formatTextReport() {
+    const report = [];
+    
+    report.push('='.repeat(60));
+    report.push('PLAGIARISM CHECK REPORT');
+    report.push('='.repeat(60));
+    report.push('');
+    report.push(`Overall Score: ${currentResult.overallPlagiarism}%`);
+    report.push(`Word Count: ${currentResult.wordCount}`);
+    report.push(`Text Length: ${currentResult.textLength} characters`);
+    report.push(`Checked At: ${new Date(currentResult.checkedAt).toLocaleString()}`);
+    report.push(`Mode: ${currentResult.isFallback ? 'Client-side Fallback' : 'API Analysis'}`);
+    report.push('');
+    report.push('-'.repeat(60));
+    report.push('SENTENCE ANALYSIS');
+    report.push('-'.repeat(60));
+    report.push('');
+    
+    currentResult.detailedReport.sentenceAnalysis.forEach((item, index) => {
+        report.push(`Sentence ${index + 1} (${item.similarity}% similarity):`);
+        report.push(`  ${item.sentence}`);
+        if (item.similarSentence) {
+            report.push(`  Similar to: ${item.similarSentence.substring(0, 100)}...`);
+        }
+        report.push('');
+    });
+    
+    report.push('-'.repeat(60));
+    report.push('SUGGESTIONS');
+    report.push('-'.repeat(60));
+    report.push('');
+    
+    currentResult.suggestions.forEach((suggestion, index) => {
+        report.push(`${index + 1}. ${suggestion}`);
+    });
+    
+    report.push('');
+    report.push('='.repeat(60));
+    report.push('End of Report');
+    report.push('='.repeat(60));
+    
+    return report.join('\n');
+}
+
+function generatePDF() {
+    // Open print dialog for PDF generation
+    window.print();
+}
+
+/* =========================
+   CONFETTI ANIMATION
+========================= */
+function createConfetti() {
+    const colors = [
+        'var(--primary)', 'var(--secondary)', 'var(--success)', 
+        'var(--warning)', 'var(--info)', 'var(--danger)'
+    ];
+    
+    for (let i = 0; i < 100; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        
+        // Random properties
+        const size = Math.random() * 10 + 5;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const left = Math.random() * 100;
+        const duration = Math.random() * 3 + 2;
+        const delay = Math.random() * 1;
+        
+        confetti.style.cssText = `
+            width: ${size}px;
+            height: ${size}px;
+            background: ${color};
+            left: ${left}%;
+            animation-duration: ${duration}s;
+            animation-delay: ${delay}s;
+            border-radius: ${Math.random() > 0.5 ? '50%' : '0'};
+        `;
+        
+        document.body.appendChild(confetti);
+        
+        // Remove after animation
+        setTimeout(() => {
+            confetti.remove();
+        }, duration * 1000);
+    }
+}
+
+/* =========================
+   ERROR HANDLING
+========================= */
+window.addEventListener('error', (e) => {
+    console.error('Global error:', e.error);
+    showToast('An unexpected error occurred', 'error');
+});
+
+window.addEventListener('unhandledrejection', (e) => {
+    console.error('Unhandled promise rejection:', e.reason);
+    showToast('Request failed. Please try again.', 'error');
+});
+
+/* =========================
+   PERFORMANCE OPTIMIZATION
+========================= */
+let resizeTimeout;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        // Recalculate anything that depends on window size
+        if (cursor) {
+            cursor.style.display = 'none';
+            setTimeout(() => {
+                cursor.style.display = 'block';
+            }, 100);
+        }
+    }, 250);
+});
+
+/* =========================
+   OFFLINE DETECTION
+========================= */
+window.addEventListener('online', () => {
+    isOnline = true;
+    showToast('You are back online!', 'success');
+    checkAPIHealth();
+});
+
+window.addEventListener('offline', () => {
+    isOnline = false;
+    showToast('You are offline. Using fallback mode.', 'warning');
+    elements.resultStatus.textContent = 'Offline Mode';
+    elements.resultStatus.className = 'result-status offline';
+});
+
+/* =========================
+   CLEANUP ON PAGE UNLOAD
+========================= */
+window.addEventListener('beforeunload', () => {
+    // Cleanup any ongoing operations
+    if (isChecking) {
+        return 'Plagiarism check is in progress. Are you sure you want to leave?';
     }
 });
