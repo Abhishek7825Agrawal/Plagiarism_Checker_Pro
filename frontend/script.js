@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* =========================
-   WORD COUNT (REAL TIME)
+   REAL-TIME WORD COUNT
 ========================= */
 function updateWordCount() {
     const text = elements.inputText.value || '';
@@ -73,7 +73,7 @@ async function checkAPIHealth() {
 }
 
 /* =========================
-   MAIN CHECK FUNCTION
+   MAIN PLAGIARISM CHECK
 ========================= */
 async function checkPlagiarism() {
     if (isChecking) return;
@@ -102,21 +102,21 @@ async function checkPlagiarism() {
 
         const data = await response.json();
 
-        // 🔹 Sentence analysis (client-side for real-time UI)
         const sentenceAnalysis = generateSentenceAnalysis(text);
+        const score = Math.round(data.overallPlagiarism || 0);
 
-        const normalizedResult = {
-            overallPlagiarism: Math.round(data.overallPlagiarism || 0),
+        const result = {
+            overallPlagiarism: score,
             textLength: text.length,
             wordCount: text.split(/\s+/).length,
             detailedReport: {
                 sentenceAnalysis
             },
-            suggestions: generateSuggestions(data.overallPlagiarism || 0)
+            suggestions: generateSuggestions(score)
         };
 
-        currentResult = normalizedResult;
-        displayResults(normalizedResult);
+        currentResult = result;
+        displayResults(result);
 
     } catch (error) {
         console.error(error);
@@ -129,7 +129,30 @@ async function checkPlagiarism() {
 }
 
 /* =========================
-   SENTENCE ANALYSIS
+   TOKENIZATION & SIMILARITY
+========================= */
+function tokenize(sentence) {
+    return sentence
+        .toLowerCase()
+        .replace(/[^a-z\s]/g, '')
+        .split(/\s+/)
+        .filter(Boolean);
+}
+
+function jaccardSimilarity(a, b) {
+    const setA = new Set(tokenize(a));
+    const setB = new Set(tokenize(b));
+
+    const intersection = new Set([...setA].filter(x => setB.has(x)));
+    const union = new Set([...setA, ...setB]);
+
+    return union.size === 0
+        ? 0
+        : Math.round((intersection.size / union.size) * 100);
+}
+
+/* =========================
+   SENTENCE ANALYSIS (REAL)
 ========================= */
 function generateSentenceAnalysis(text) {
     const sentences = text
@@ -138,11 +161,17 @@ function generateSentenceAnalysis(text) {
         .filter(Boolean);
 
     return sentences.map((sentence, index) => {
-        const similarity = Math.floor(Math.random() * 60);
+        let maxSimilarity = 0;
+
+        for (let i = 0; i < index; i++) {
+            const sim = jaccardSimilarity(sentence, sentences[i]);
+            if (sim > maxSimilarity) maxSimilarity = sim;
+        }
+
         return {
             sentence,
             position: index,
-            similarity
+            similarity: maxSimilarity
         };
     });
 }
@@ -162,6 +191,7 @@ function performClientSideFallback(text) {
         suggestions: generateSuggestions(score)
     };
 
+    currentResult = result;
     displayResults(result);
 }
 
@@ -200,7 +230,7 @@ function displayResults(result) {
 }
 
 /* =========================
-   DISPLAY SENTENCES
+   SENTENCE DISPLAY
 ========================= */
 function displaySentences(sentences) {
     elements.sentencesList.innerHTML = '';
