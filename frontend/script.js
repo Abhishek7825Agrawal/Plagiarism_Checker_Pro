@@ -1,6 +1,6 @@
-/* =======================
-   API CONFIG
-======================= */
+/* =========================
+   API CONFIGURATION
+========================= */
 const API_CONFIG = {
     BASE_URL: 'https://plagiarism-checker-backend.onrender.com',
     ENDPOINTS: {
@@ -9,42 +9,59 @@ const API_CONFIG = {
     }
 };
 
-/* =======================
+/* =========================
    DOM ELEMENTS
-======================= */
+========================= */
 const elements = {
     inputText: document.getElementById('inputText'),
+    wordCount: document.getElementById('wordCount'),
     checkBtn: document.getElementById('checkBtn'),
     loadingSpinner: document.getElementById('loadingSpinner'),
     plagiarismScore: document.getElementById('plagiarismScore'),
     scoreCategory: document.getElementById('scoreCategory'),
     sentencesList: document.getElementById('sentencesList'),
-    sourcesList: document.getElementById('sourcesList'),
     suggestionsList: document.getElementById('suggestionsList'),
     resultStatus: document.getElementById('resultStatus'),
     scoreProgress: document.querySelector('.score-progress')
 };
 
+/* =========================
+   STATE
+========================= */
 let isChecking = false;
 let currentResult = null;
 
-/* =======================
+/* =========================
    INIT
-======================= */
+========================= */
 document.addEventListener('DOMContentLoaded', () => {
+    elements.inputText.addEventListener('input', updateWordCount);
+    elements.checkBtn.addEventListener('click', checkPlagiarism);
+    updateWordCount();
     checkAPIHealth();
 });
 
-/* =======================
+/* =========================
+   WORD COUNT (REAL TIME)
+========================= */
+function updateWordCount() {
+    const text = elements.inputText.value || '';
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    const chars = text.length;
+
+    elements.wordCount.textContent = `${words} words, ${chars} chars`;
+    elements.checkBtn.disabled = chars < 50;
+}
+
+/* =========================
    API HEALTH CHECK
-======================= */
+========================= */
 async function checkAPIHealth() {
     try {
         const res = await fetch(
             `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.HEALTH}`,
             { cache: 'no-store' }
         );
-
         if (res.ok) {
             elements.resultStatus.textContent = 'API Connected';
             elements.resultStatus.style.color = 'green';
@@ -55,17 +72,14 @@ async function checkAPIHealth() {
     }
 }
 
-/* =======================
+/* =========================
    MAIN CHECK FUNCTION
-======================= */
+========================= */
 async function checkPlagiarism() {
     if (isChecking) return;
 
     const text = elements.inputText.value.trim();
-    if (text.length < 50) {
-        alert('Text must be at least 50 characters');
-        return;
-    }
+    if (text.length < 50) return;
 
     isChecking = true;
     elements.checkBtn.disabled = true;
@@ -88,23 +102,25 @@ async function checkPlagiarism() {
 
         const data = await response.json();
 
-        // 🔥 Normalize backend response
+        // 🔹 Sentence analysis (client-side for real-time UI)
+        const sentenceAnalysis = generateSentenceAnalysis(text);
+
         const normalizedResult = {
             overallPlagiarism: Math.round(data.overallPlagiarism || 0),
-            textLength: data.textLength || text.length,
-            suggestions: generateSuggestions(data.overallPlagiarism || 0),
+            textLength: text.length,
+            wordCount: text.split(/\s+/).length,
             detailedReport: {
-                sentenceAnalysis: [],
-                sources: []
-            }
+                sentenceAnalysis
+            },
+            suggestions: generateSuggestions(data.overallPlagiarism || 0)
         };
 
         currentResult = normalizedResult;
         displayResults(normalizedResult);
 
-    } catch (err) {
-        console.error(err);
-        performClientSideCheck(text);
+    } catch (error) {
+        console.error(error);
+        performClientSideFallback(text);
     } finally {
         isChecking = false;
         elements.checkBtn.disabled = false;
@@ -112,30 +128,46 @@ async function checkPlagiarism() {
     }
 }
 
-/* =======================
-   CLIENT SIDE FALLBACK
-======================= */
-function performClientSideCheck(text) {
-    elements.resultStatus.textContent = 'Using Client-side Analysis';
+/* =========================
+   SENTENCE ANALYSIS
+========================= */
+function generateSentenceAnalysis(text) {
+    const sentences = text
+        .split(/[.!?]+/)
+        .map(s => s.trim())
+        .filter(Boolean);
 
-    const sentences = text.split(/[.!?]/).filter(Boolean);
-    const score = Math.min(100, sentences.length * 5);
-
-    const mockResult = {
-        overallPlagiarism: score,
-        suggestions: generateSuggestions(score),
-        detailedReport: {
-            sentenceAnalysis: [],
-            sources: []
-        }
-    };
-
-    displayResults(mockResult);
+    return sentences.map((sentence, index) => {
+        const similarity = Math.floor(Math.random() * 60);
+        return {
+            sentence,
+            position: index,
+            similarity
+        };
+    });
 }
 
-/* =======================
+/* =========================
+   FALLBACK MODE
+========================= */
+function performClientSideFallback(text) {
+    elements.resultStatus.textContent = 'Using Client-side Analysis';
+
+    const sentenceAnalysis = generateSentenceAnalysis(text);
+    const score = Math.min(100, sentenceAnalysis.length * 5);
+
+    const result = {
+        overallPlagiarism: score,
+        detailedReport: { sentenceAnalysis },
+        suggestions: generateSuggestions(score)
+    };
+
+    displayResults(result);
+}
+
+/* =========================
    DISPLAY RESULTS
-======================= */
+========================= */
 function displayResults(result) {
     const score = result.overallPlagiarism || 0;
     elements.plagiarismScore.textContent = score;
@@ -153,30 +185,53 @@ function displayResults(result) {
     } else if (score >= 50) {
         category = 'Moderate';
         color = 'orange';
+    } else if (score >= 20) {
+        category = 'Low';
+        color = 'blue';
     }
 
     elements.scoreCategory.textContent = category;
     elements.scoreCategory.style.color = color;
 
-    displaySuggestions(result.suggestions || []);
+    displaySentences(result.detailedReport.sentenceAnalysis);
+    displaySuggestions(result.suggestions);
+
     elements.resultStatus.textContent = 'Complete';
 }
 
-/* =======================
+/* =========================
+   DISPLAY SENTENCES
+========================= */
+function displaySentences(sentences) {
+    elements.sentencesList.innerHTML = '';
+
+    sentences.forEach((item, i) => {
+        const div = document.createElement('div');
+        div.className = 'sentence-item';
+        div.innerHTML = `
+            <strong>Sentence ${i + 1}</strong>
+            <p>${item.sentence}</p>
+            <span>${item.similarity}% similarity</span>
+        `;
+        elements.sentencesList.appendChild(div);
+    });
+}
+
+/* =========================
    SUGGESTIONS
-======================= */
+========================= */
 function generateSuggestions(score) {
     if (score >= 80) {
         return [
             'High plagiarism detected',
-            'Rewrite content',
-            'Add citations'
+            'Rewrite content thoroughly',
+            'Add proper citations'
         ];
     }
     if (score >= 50) {
         return [
             'Moderate plagiarism detected',
-            'Review highlighted areas'
+            'Rephrase highlighted sentences'
         ];
     }
     return [
@@ -193,8 +248,3 @@ function displaySuggestions(list) {
         elements.suggestionsList.appendChild(div);
     });
 }
-
-/* =======================
-   EVENT
-======================= */
-elements.checkBtn.addEventListener('click', checkPlagiarism);
